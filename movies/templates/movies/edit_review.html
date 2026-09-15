@@ -10,8 +10,7 @@
           {% csrf_token %}
           <p>
             <label for="comment">Comment:</label>
-            <textarea name="comment" required
-            class="form-control" id="comment">{{ template_data.review.comment }}</textarea>
+            <textarea name="comment" required class="form-control" id="comment">{{ template_data.review.comment }}</textarea>
           </p>
           <div class="text-start">
             <button type="submit"
