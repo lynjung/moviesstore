@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   {% load static %}
   <head>
+  <meta charset="utf-8">
   <title>{{ template_data.title }}</title>
 
   <link
@@ -69,8 +70,9 @@
             <a class="nav-link"
               href="{% url 'accounts.orders' %}">Orders
             </a>
-            <a class="nav-link"
-              href="{% url 'accounts.logout' %}">Logout ({{ user.username }})</a>
+            <form method="POST" action="{% url 'accounts.logout' %}">
+              {% csrf_token %}<button type="submit" class="nav-link border-0 bg-transparent">Logout ({{ user.username }})</button>
+            </form>
             {% else %}
             <a class="nav-link"
               href="{% url 'accounts.login' %}">Login</a>
@@ -85,6 +87,7 @@
     </nav>
     <!-- Header -->
     <div>
+      {% for message in messages %}<div class="container mt-3"><div class="alert alert-info" role="alert">{{ message }}</div></div>{% endfor %}
       {% block content %}
       {% endblock content %}
     </div>

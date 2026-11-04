@@ -8,10 +8,7 @@
         <hr />
         <form method="POST">
           {% csrf_token %}
-          <p>
-            <label for="comment">Comment:</label>
-            <textarea name="comment" required class="form-control" id="comment">{{ template_data.review.comment }}</textarea>
-          </p>
+          {{ template_data.form.as_p }}
           <div class="text-start">
             <button type="submit"
               class="btn bg-dark text-white">Edit Review

@@ -1,6 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Movie, Review
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django import forms
+from django.views.decorators.http import require_POST, require_http_methods
+
+class ReviewForm(forms.Form):
+    comment = forms.CharField(max_length=255, widget=forms.Textarea(attrs={"class": "form-control"}))
 
 def index(request):
     search_term = request.GET.get('search')
@@ -15,8 +21,8 @@ def index(request):
                   {'template_data': template_data})
 
 def show(request, id):
-    movie = Movie.objects.get(id=id)
-    reviews = Review.objects.filter(movie=movie, reported=False)
+    movie = get_object_or_404(Movie, id=id)
+    reviews = Review.objects.filter(movie=movie, reported=False).select_related("user")
     template_data = {}
     template_data['title'] = movie.name
     template_data['movie'] = movie
@@ -25,45 +31,39 @@ def show(request, id):
                   {'template_data': template_data})
 
 @login_required
+@require_POST
 def create_review(request, id):
-    if request.method == 'POST' and request.POST['comment']!= '':
-        movie = Movie.objects.get(id=id)
-        review = Review()
-        review.comment = request.POST['comment']
-        review.movie = movie
-        review.user = request.user
-        review.save()
-        return redirect('movies.show', id=id)
+    movie = get_object_or_404(Movie, id=id)
+    form = ReviewForm(request.POST)
+    if form.is_valid():
+        Review.objects.create(comment=form.cleaned_data['comment'], movie=movie, user=request.user)
     else:
-        return redirect('movies.show', id=id)
+        messages.error(request, 'Please enter a review between 1 and 255 characters.')
+    return redirect('movies.show', id=id)
 
 @login_required
+@require_http_methods(['GET', 'POST'])
 def edit_review(request, id, review_id):
-    review = get_object_or_404(Review, id=review_id)
-    if request.user != review.user:
+    review = get_object_or_404(Review, id=review_id, movie_id=id, user=request.user)
+    form = ReviewForm(request.POST if request.method == 'POST' else None,
+                      initial={'comment': review.comment})
+    if request.method == 'POST' and form.is_valid():
+        review.comment = form.cleaned_data['comment']
+        review.save(update_fields=['comment'])
         return redirect('movies.show', id=id)
-    if request.method == 'GET':
-        template_data = {}
-        template_data['title'] = 'Edit Review'
-        template_data['review'] = review
-        return render(request, 'movies/edit_review.html',
-            {'template_data': template_data})
-    elif request.method == 'POST' and request.POST['comment'] != '':
-        review = Review.objects.get(id=review_id)
-        review.comment = request.POST['comment']
-        review.save()
-        return redirect('movies.show', id=id)
-    else:
-        return redirect('movies.show', id=id)
+    return render(request, 'movies/edit_review.html', {'template_data': {
+        'title': 'Edit Review', 'review': review, 'form': form}})
 
 @login_required
+@require_POST
 def delete_review(request, id, review_id):
-    review = get_object_or_404(Review, id=review_id,
+    review = get_object_or_404(Review, id=review_id, movie_id=id,
         user=request.user)
     review.delete()
     return redirect('movies.show', id=id)
 
 @login_required
+@require_POST
 def report_review(request, id, review_id):
     review = get_object_or_404(
         Review,

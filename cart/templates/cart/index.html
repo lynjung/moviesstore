@@ -39,14 +39,16 @@
         <a class="btn btn-outline-secondary mb-2"><b>Total
           to pay:</b> ${{ template_data.cart_total }}</a>
         {% if template_data.movies_in_cart|length > 0 %}
-        <a href="{% url 'cart.purchase' %}"
-          class="btn bg-dark text-white mb-2">Purchase
-        </a>
-        <a href="{% url 'cart.clear' %}">
-          <button class="btn btn-danger mb-2">
-            Remove all movies from Cart
-          </button>
-        </a>
+        {% if user.is_authenticated %}
+        <form method="POST" action="{% url 'cart.purchase' %}" class="d-inline">
+          {% csrf_token %}<button class="btn bg-dark text-white mb-2" type="submit">Purchase</button>
+        </form>
+        {% else %}
+        <a href="{% url 'accounts.login' %}?next={% url 'cart.index' %}" class="btn bg-dark text-white mb-2">Log in to purchase</a>
+        {% endif %}
+        <form method="POST" action="{% url 'cart.clear' %}" class="d-inline">
+          {% csrf_token %}<button class="btn btn-danger mb-2" type="submit">Remove all movies from Cart</button>
+        </form>
         {% endif %}
       </div>
     </div>

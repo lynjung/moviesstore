@@ -3,11 +3,14 @@ from django.contrib.auth import login as auth_login, authenticate, logout as aut
 from .forms import CustomUserCreationForm, CustomErrorList
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+from django.views.decorators.http import require_POST, require_http_methods
+from django.utils.http import url_has_allowed_host_and_scheme
 @login_required
+@require_POST
 def logout(request):
     auth_logout(request)
     return redirect('home.index')
+@require_http_methods(["GET", "POST"])
 def login(request):
     template_data = {}
     template_data['title'] = 'Login'
@@ -17,8 +20,8 @@ def login(request):
     elif request.method == 'POST':
         user = authenticate(
             request,
-            username = request.POST['username'],
-            password = request.POST['password']
+            username = request.POST.get('username', ''),
+            password = request.POST.get('password', '')
         )
         if user is None:
             template_data['error'] = 'The username or password is incorrect.'
@@ -26,7 +29,11 @@ def login(request):
                 {'template_data': template_data})
         else:
             auth_login(request, user)
+            next_url = request.GET.get('next', '')
+            if url_has_allowed_host_and_scheme(next_url, {request.get_host()}, require_https=request.is_secure()):
+                return redirect(next_url)
             return redirect('home.index')
+@require_http_methods(["GET", "POST"])
 def signup(request):
     template_data = {}
     template_data['title'] = 'Sign Up'
@@ -48,6 +55,6 @@ def signup(request):
 def orders(request):
     template_data = {}
     template_data['title'] = 'Orders'
-    template_data['orders'] = request.user.order_set.all()
+    template_data['orders'] = request.user.order_set.prefetch_related("item_set__movie").order_by("-date")
     return render(request, 'accounts/orders.html',
         {'template_data': template_data})
