@@ -3,6 +3,7 @@ from .models import Movie, Review
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django import forms
+from django.db.models import Case, IntegerField, Value, When
 from django.views.decorators.http import require_POST, require_http_methods
 
 class ReviewForm(forms.Form):
@@ -14,6 +15,19 @@ def index(request):
         movies = Movie.objects.filter(name__icontains=search_term)
     else:
         movies = Movie.objects.all()
+    catalog_order = [
+        'Inception', 'Avatar', 'The Dark Knight', 'Titanic',
+        'Interstellar', 'La La Land', '20th Century Girl', 'Baby Driver',
+    ]
+    movies = movies.order_by(
+        Case(
+            *[When(name=name, then=Value(position))
+              for position, name in enumerate(catalog_order)],
+            default=Value(len(catalog_order)),
+            output_field=IntegerField(),
+        ),
+        'id',
+    )
     template_data = {}
     template_data['title'] = 'Movies'
     template_data['movies'] = movies
