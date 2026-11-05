@@ -57,3 +57,27 @@ class MovieTests(TestCase):
         self.assertNotContains(self.client.get(f'/movies/{self.movie.id}/'), 'Original')
         self.client.post(self.url('delete_review'))
         self.assertFalse(Review.objects.filter(pk=self.review.pk).exists())
+
+
+class FavoriteCatalogTests(TestCase):
+    def test_additions_preserve_existing_movies_and_are_repeatable(self):
+        import tempfile
+        from io import StringIO
+        from django.core.management import call_command
+        original = Movie.objects.create(name='Inception', price=12, description='Original')
+        with tempfile.TemporaryDirectory() as media, self.settings(MEDIA_ROOT=media):
+            call_command('add_favorites', stdout=StringIO())
+            self.assertEqual(Movie.objects.count(), 5)
+            for name in ['La La Land', '20th Century Girl', 'Baby Driver', 'Interstellar']:
+                movie = Movie.objects.get(name=name)
+                self.assertTrue(movie.image.storage.exists(movie.image.name))
+                self.assertEqual(self.client.get(f'/movies/{movie.id}/').status_code, 200)
+            favorite = Movie.objects.get(name='La La Land')
+            favorite.price = 13
+            favorite.save()
+            call_command('add_favorites', stdout=StringIO())
+            self.assertEqual(Movie.objects.count(), 5)
+            favorite.refresh_from_db()
+            self.assertEqual(favorite.price, 13)
+            original.refresh_from_db()
+            self.assertEqual(original.description, 'Original')
